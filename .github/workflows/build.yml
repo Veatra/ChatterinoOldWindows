@@ -119,15 +119,9 @@ jobs:
     strategy:
       matrix:
         include:
-          # macOS
-          - os: macos-14
-            qt-version: 6.7.1
-            force-lto: false
-            skip-artifact: false
-            skip-crashpad: false
           # Windows
           - os: windows-latest
-            qt-version: 6.7.1
+            qt-version: 6.7.3
             force-lto: false
             skip-artifact: false
             skip-crashpad: false
@@ -321,15 +315,15 @@ jobs:
 
       # Windows
       - uses: actions/download-artifact@v5
-        name: Windows Qt6.7.1
+        name: Windows Qt6.7.3
         with:
-          name: chatterino-windows-x86-64-Qt-6.7.1.zip
+          name: chatterino-windowsold-x86-64-Qt-6.7.3.zip
           path: release-artifacts/
 
       - uses: actions/download-artifact@v5
-        name: Windows Qt6.7.1 symbols
+        name: Windows Qt6.7.3 symbols
         with:
-          name: chatterino-windows-x86-64-Qt-6.7.1-symbols.pdb.7z
+          name: chatterino-windows-x86-64-Qt-6.7.3-symbols.pdb.7z
           path: release-artifacts/
 
       # Linux
