@@ -1074,7 +1074,8 @@ target_compile_definitions(${LIBRARY_PROJECT} PUBLIC
     AB_CUSTOM_SETTINGS
     IRC_STATIC
     IRC_NAMESPACE=Communi
-    $<$<BOOL:${WIN32}>:_WIN32_WINNT=0x0A00> # Windows 10
+    #$<$<BOOL:${WIN32}>:_WIN32_WINNT=0x0A00> # Windows 10
+    $<$<BOOL:${WIN32}>:_WIN32_WINNT=0x0603> # Windows 8.1
     $<$<BOOL:${BUILD_TESTS}>:CHATTERINO_WITH_TESTS>
     )
 
