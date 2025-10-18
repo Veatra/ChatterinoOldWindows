@@ -238,20 +238,20 @@ jobs:
         if: startsWith(matrix.os, 'windows')
         working-directory: build
         run: |
-          7z a chatterino-windows-x86-64-Qt-${{ matrix.qt-version }}.zip Chatterino2/
+          7z a chatterino-windows-old-x86-64-Qt-${{ matrix.qt-version }}.zip Chatterino2/
 
       - name: Upload artifact (Windows - binary)
         if: startsWith(matrix.os, 'windows') && !matrix.skip-artifact
         uses: actions/upload-artifact@v4
         with:
-          name: chatterino-windows-x86-64-Qt-${{ matrix.qt-version }}.zip
-          path: build/chatterino-windows-x86-64-Qt-${{ matrix.qt-version }}.zip
+          name: chatterino-windows-old-x86-64-Qt-${{ matrix.qt-version }}.zip
+          path: build/chatterino-windows-old-x86-64-Qt-${{ matrix.qt-version }}.zip
 
       - name: Upload artifact (Windows - symbols)
         if: startsWith(matrix.os, 'windows') && !matrix.skip-artifact
         uses: actions/upload-artifact@v4
         with:
-          name: chatterino-windows-x86-64-Qt-${{ matrix.qt-version }}-symbols.pdb.7z
+          name: chatterino-windows-old-x86-64-Qt-${{ matrix.qt-version }}-symbols.pdb.7z
           path: build/bin/chatterino-Qt-${{ matrix.qt-version }}.pdb.7z
 
       - name: Clean Conan cache
@@ -317,13 +317,13 @@ jobs:
       - uses: actions/download-artifact@v5
         name: Windows Qt6.7.3
         with:
-          name: chatterino-windowsold-x86-64-Qt-6.7.3.zip
+          name: chatterino-windows-old-x86-64-Qt-6.7.3.zip
           path: release-artifacts/
 
       - uses: actions/download-artifact@v5
         name: Windows Qt6.7.3 symbols
         with:
-          name: chatterino-windows-x86-64-Qt-6.7.3-symbols.pdb.7z
+          name: chatterino-windows-old-x86-64-Qt-6.7.3-symbols.pdb.7z
           path: release-artifacts/
 
       # Linux
