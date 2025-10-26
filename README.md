@@ -3,60 +3,23 @@ Chatterino 2 [![GitHub Actions Build (Windows, Ubuntu, MacOS)](https://github.co
 ============
 
 Chatterino 2 is a chat client for [Twitch.tv](https://twitch.tv).
-The Chatterino 2 wiki can be found [here](https://wiki.chatterino.com).
-Contribution guidelines can be found [here](https://wiki.chatterino.com/Contributing%20for%20Developers).
+
+This chatterino is adjusted to revert some changes only working for windows 10/11
+Use modifed qt6 linked below to make this version work
 
 ## Download
 
-Current releases are available at [https://chatterino.com](https://chatterino.com).
-Windows users can also install Chatterino [from Chocolatey](https://chocolatey.org/packages/chatterino).
+- Download the latest Chatterino 2 nightly build [here](https://github.com/Veatra/ChatterinoOldWindows/releases/download/nightly-build/chatterino-windows-old-x86-64-Qt-6.7.3.zip)
+- Extract it into a folder
+- Get modifed **qt 6.7.3** [here](https://github.com/crystalidea/qt6windows7/releases/tag/v6.7.3) (higher qt versions can crash)
+- Extract into the same folder (overwriting it files), which was made for this chatterino
 
-## Nightly build
 
-You can download the latest Chatterino 2 build over [here](https://github.com/Chatterino/chatterino2/releases/tag/nightly-build)
+
 
 You might also need to install the [VC++ Redistributables](https://aka.ms/vs/17/release/vc_redist.x64.exe) from Microsoft if you do not have it installed already.  
 If you still receive an error about `MSVCR120.dll missing`, then you should install the [VC++ 2013 Restributable](https://download.microsoft.com/download/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x64.exe).
 
-## Building
-
-To get source code with required submodules run:
-
-```shell
-git clone --recurse-submodules https://github.com/Chatterino/chatterino2.git
-```
-
-or
-
-```shell
-git clone https://github.com/Chatterino/chatterino2.git
-cd chatterino2
-git submodule update --init --recursive
-```
-
-- [Building on Windows](../master/BUILDING_ON_WINDOWS.md)
-- [Building on Windows with vcpkg](../master/BUILDING_ON_WINDOWS_WITH_VCPKG.md)
-- [Building on Linux](../master/BUILDING_ON_LINUX.md)
-- [Building on macOS](../master/BUILDING_ON_MAC.md)
-- [Building on FreeBSD](../master/BUILDING_ON_FREEBSD.md)
-
-## Git blame
-
-This project has big commits in the history which touch most files while only doing stylistic changes. To improve the output of git-blame, consider setting:
-
-```shell
-git config blame.ignoreRevsFile .git-blame-ignore-revs
-```
-
-This will ignore all revisions mentioned in the [`.git-blame-ignore-revs`
-file](./.git-blame-ignore-revs). GitHub does this by default.
-
-## Code style
-
-The code is formatted using [clang-format](https://clang.llvm.org/docs/ClangFormat.html). Our configuration is found in the [.clang-format](.clang-format) file in the repository root directory.
-
-For more contribution guidelines, take a look at [the wiki](https://wiki.chatterino.com/Contributing%20for%20Developers/).
-
-## Doxygen
-
-Doxygen is used to generate project information daily and is available [here](https://doxygen.chatterino.com).
+## Use
+- Should start without error now and without crashing opening a channel or settings
+- Found might be buggy for usernames and some things, try out one of the other installed (like Segoe U)
