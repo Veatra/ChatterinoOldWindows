@@ -127,17 +127,9 @@ RECT windowBordersFor(HWND hwnd, bool isMaximized)
     {
         // GetDpiForWindow and GetSystemMetricsForDpi are only supported on
         // Windows 10 and later. Qt 6 requires Windows 10.
-#    if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-        auto dpi = GetDpiForWindow(hwnd);
-#    endif
 
+        // Always use Windows 8.1 logic: default DPI 96, no GetSystemMetricsForDpi
         auto systemMetric = [&](auto index) {
-#    if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-            if (dpi != 0)
-            {
-                return GetSystemMetricsForDpi(index, dpi);
-            }
-#    endif
             return GetSystemMetrics(index);
         };
 
