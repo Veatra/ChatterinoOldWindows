@@ -191,11 +191,6 @@ jobs:
           name: chatterino-windows-old-x86-64-Qt-6.7.3-symbols.pdb.7z
           path: release-artifacts/
 
-       - name: Copy flatpakref
-         run: |
-           cp .CI/chatterino-nightly.flatpakref release-artifacts/
-         shell: bash
-
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
