@@ -167,8 +167,9 @@ jobs:
         run: conan cache clean --source --build --download "*"
         shell: bash
 
+# Remome 'build-ubuntu-docker' from the 'needs' list, only build Windows Versions
   create-release:
-    needs: [build-ubuntu-docker, build]
+    needs: [build]
     runs-on: ubuntu-latest
     if: (github.event_name == 'push' && github.ref == 'refs/heads/master')
 
@@ -190,10 +191,10 @@ jobs:
           name: chatterino-windows-old-x86-64-Qt-6.7.3-symbols.pdb.7z
           path: release-artifacts/
 
-      - name: Copy flatpakref
-        run: |
-          cp .CI/chatterino-nightly.flatpakref release-artifacts/
-        shell: bash
+       - name: Copy flatpakref
+         run: |
+           cp .CI/chatterino-nightly.flatpakref release-artifacts/
+         shell: bash
 
       - name: Setup Python
         uses: actions/setup-python@v6
