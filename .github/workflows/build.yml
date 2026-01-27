@@ -21,117 +21,15 @@ env:
   CONAN_VERSION: 2.11.0
 
 jobs:
-  build-ubuntu-docker:
-    # Our Ubuntu builds are built using Docker images that have been pre-published.
-    # This speeds up builds for us since we do some pre-building of packages that takes a long time
-    # However, this means if you need to add a dependency to the build, you'll need to do that
-    # in the https://github.com/Chatterino/docker repository first.
-    name: "Build Ubuntu in Docker"
-    runs-on: ubuntu-latest
-    container: ${{ matrix.container }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-22.04
-            container: ghcr.io/chatterino/chatterino2-build-ubuntu-22.04:latest
-            qt-version: 6.7.2
-            force-lto: false
-            skip-artifact: false
-            skip-crashpad: false
-            build-deb: true
-            plugins: true
-          - os: ubuntu-24.04
-            container: ghcr.io/chatterino/chatterino2-build-ubuntu-24.04:latest
-            qt-version: 6.7.2
-            force-lto: false
-            skip-artifact: false
-            skip-crashpad: false
-            build-deb: true
-            plugins: true
-          - os: ubuntu-24.04
-            container: ghcr.io/chatterino/chatterino2-build-ubuntu-24.04:latest
-            qt-version: 6.7.2
-            force-lto: false
-            skip-artifact: false
-            skip-crashpad: false
-            build-deb: false
-            plugins: false
-    env:
-      C2_ENABLE_LTO: ${{ matrix.force-lto }}
-      C2_ENABLE_CRASHPAD: ${{ matrix.skip-crashpad == false }}
-
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          submodules: recursive
-          fetch-depth: 0 # allows for tags access
-
-      - name: Fix git permission error
-        run: |
-          git config --global --add safe.directory '*'
-
-      - name: Install Python and libclang (24.04)
-        if: matrix.os == 'ubuntu-24.04'
-        run: |
-          sudo apt update
-          sudo DEBIAN_FRONTEND=noninteractive apt -y --no-install-recommends install \
-            python3 python3-venv clang-18 clang-format-18 libclang-18-dev
-          echo "LIBCLANG_LIBRARY_FILE=/usr/lib/x86_64-linux-gnu/libclang-18.so" >> "$GITHUB_ENV"
-          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-18 42
-          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-18 42
-
-      - name: Build
-        run: |
-          mkdir build
-          cd build
-          CXXFLAGS=-fno-sized-deallocation cmake \
-            -DCMAKE_INSTALL_PREFIX=appdir/usr/ \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DPAJLADA_SETTINGS_USE_BOOST_FILESYSTEM=On \
-            -DUSE_PRECOMPILED_HEADERS=OFF \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=On \
-            -DCHATTERINO_LTO="$C2_ENABLE_LTO" \
-            -DCMAKE_PREFIX_PATH="$Qt6_DIR/lib/cmake" \
-            -DCHATTERINO_STATIC_QT_BUILD=On \
-            -DFORCE_JSON_GENERATION=${{matrix.os == 'ubuntu-24.04' && 'On' || 'Off'}} \
-            -DCHATTERINO_PLUGINS=${{ matrix.plugins && 'On' || 'Off' }} \
-            ..
-          make -j"$(nproc)"
-
-      - name: Check generated sources
-        if: matrix.os == 'ubuntu-24.04'
-        run: |
-          git add -N lib/twitch-eventsub-ws/include lib/twitch-eventsub-ws/src
-          git --no-pager diff --exit-code lib/twitch-eventsub-ws/include lib/twitch-eventsub-ws/src
-
-      - name: Package - .deb (Ubuntu)
-        if: matrix.build-deb
-        run: |
-          cd build
-          sh ./../.CI/CreateUbuntuDeb.sh
-
-      - name: Upload artifact - .deb (Ubuntu)
-        if: matrix.build-deb
-        uses: actions/upload-artifact@v6
-        with:
-          name: Chatterino-${{ matrix.os }}-Qt-${{ matrix.qt-version }}.deb
-          path: build/Chatterino-${{ matrix.os }}-x86_64.deb
-
   build:
     name: "Build ${{ matrix.os }}, Qt ${{ matrix.qt-version }} (LTO:${{ matrix.force-lto }}, crashpad:${{ matrix.skip-crashpad && 'off' || 'on' }})"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
-          # macOS
-          - os: macos-14
-            qt-version: 6.7.1
-            force-lto: false
-            skip-artifact: false
-            skip-crashpad: false
           # Windows
           - os: windows-latest
-            qt-version: 6.7.1
+            qt-version: 6.7.3
             force-lto: false
             skip-artifact: false
             skip-crashpad: false
@@ -270,51 +168,6 @@ jobs:
         run: conan cache clean --source --build --download "*"
         shell: bash
 
-      # MACOS
-      - name: Install dependencies (MacOS)
-        if: startsWith(matrix.os, 'macos')
-        run: |
-          # brew install openssl rapidjson p7zip create-dmg cmake tree boost hunspell
-          brew install openssl rapidjson p7zip create-dmg tree boost hunspell
-        shell: bash
-
-      - name: Build (MacOS)
-        if: startsWith(matrix.os, 'macos')
-        run: |
-          mkdir build
-          cd build
-          cmake \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \
-              -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl \
-              -DUSE_PRECOMPILED_HEADERS=OFF \
-              -DCHATTERINO_LTO="$C2_ENABLE_LTO" \
-              -DFORCE_JSON_GENERATION=Off \
-              -DCHATTERINO_SPELLCHECK=On \
-              ..
-          make -j"$(sysctl -n hw.logicalcpu)"
-        shell: bash
-
-      - name: Package (MacOS)
-        if: startsWith(matrix.os, 'macos')
-        env:
-          OUTPUT_DMG_PATH: chatterino-macos-Qt-${{ matrix.qt-version}}.dmg
-        run: |
-          ls -la
-          pwd
-          ls -la build || true
-          cd build
-          ./../.CI/MacDeploy.sh
-          ./../.CI/CreateDMG.sh
-        shell: bash
-
-      - name: Upload artifact (MacOS)
-        if: startsWith(matrix.os, 'macos')
-        uses: actions/upload-artifact@v6
-        with:
-          name: chatterino-macos-Qt-${{ matrix.qt-version }}.dmg
-          path: build/chatterino-macos-Qt-${{ matrix.qt-version }}.dmg
-
   create-release:
     needs: [build-ubuntu-docker, build]
     runs-on: ubuntu-latest
@@ -327,28 +180,15 @@ jobs:
 
       # Windows
       - uses: actions/download-artifact@v7
-        name: Windows Qt6.7.1
+        name: Windows Qt6.7.3
         with:
-          name: chatterino-windows-x86-64-Qt-6.7.1.zip
+          name: chatterino-windowsold-x86-64-Qt-6.7.3.zip
           path: release-artifacts/
 
       - uses: actions/download-artifact@v7
-        name: Windows Qt6.7.1 symbols
+        name: Windows Qt6.7.3 symbols
         with:
-          name: chatterino-windows-x86-64-Qt-6.7.1-symbols.pdb.7z
-          path: release-artifacts/
-
-      # Linux
-      - uses: actions/download-artifact@v7
-        name: Ubuntu 22.04 deb
-        with:
-          name: Chatterino-ubuntu-22.04-Qt-6.7.2.deb
-          path: release-artifacts/
-
-      - uses: actions/download-artifact@v7
-        name: Ubuntu 24.04 deb
-        with:
-          name: Chatterino-ubuntu-24.04-Qt-6.7.2.deb
+          name: chatterino-windows-x86-64-Qt-6.7.3-symbols.pdb.7z
           path: release-artifacts/
 
       - name: Copy flatpakref
