@@ -403,37 +403,16 @@ void IrcMessageHandler::parsePrivMessageInto(
             channel->setVIP(parsedBadges.contains("vip"));
             channel->setStaff(parsedBadges.contains("staff"));
         }
-
-        if (!channel->isLoadingRecentMessages())
-        {
-            // Clear the send wait timer when we are able to send a message
-            channel->setSendWait(0);
-
-            // Update send wait timer with slow mode timeout if this user is not a mod or vip.
-            if (!channel->hasHighRateLimit())
-            {
-                auto roomModes = *channel->accessRoomModes();
-                if (roomModes.slowMode > 0)
-                {
-                    channel->setSendWait(roomModes.slowMode);
-                }
-            }
-        }
     }
 
-    // Skip monitored messages from IRC - will be handled by EventSub with proper styling
-    // Check for low-trust-users tag to detect monitored/restricted messages
-    const auto &tags = message->tags();
-    if (tags.contains("low-trust-users"))
+    // Prevent duplicate messages if the EventSub "monitored-user" payload beat IRC
+    QString msgId = message->tag("id").toString();
+    if (!msgId.isEmpty() && channel->findMessageByID(msgId))
     {
-        auto lowTrustLevel = tags.value("low-trust-users").toString();
-        if (lowTrustLevel == "monitored")
-        {
-            qCDebug(chatterinoTwitch) << "Skipping IRC monitored message, will use EventSub:"
-                                     << tags.value("id").toString();
-            return;
-        }
+        qCDebug(chatterinoTwitch) << "Skipping IRC message, already handled by EventSub:" << msgId;
+        return;
     }
+
 
     IrcMessageHandler::addMessage(
         message, sink, channel, unescapeZeroWidthJoiner(message->content()),
