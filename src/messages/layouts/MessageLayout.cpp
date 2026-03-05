@@ -459,8 +459,9 @@ void MessageLayout::updateBuffer(QPixmap *buffer,
         }
         else if (this->message_->flags.has(MessageFlag::MonitoredMessage))
         {
-            if (ctx.preferences.enableMonitoredMessageHighlight) {
-                QColor customColor(ctx.preferences.monitoredMessageHighlightColor.getValue());
+            // Fetch directly from getSettings() instead of ctx.preferences
+            if (getSettings()->enableMonitoredMessageHighlight.getValue()) {
+                QColor customColor(getSettings()->monitoredMessageHighlightColor.getValue());
                 if (customColor.isValid()) {
                     backgroundColor = blendColors(backgroundColor, customColor);
                 } else {
@@ -471,6 +472,11 @@ void MessageLayout::updateBuffer(QPixmap *buffer,
                 backgroundColor = QColor("#404040"); // Default dark gray if highlighting is toggled off
             }
         }
+        else
+        {
+            backgroundColor = QColor("#404040"); // Restricted messages / fallback
+        }
+    }
         else
         {
             backgroundColor = QColor("#404040"); // Restricted messages / fallback
