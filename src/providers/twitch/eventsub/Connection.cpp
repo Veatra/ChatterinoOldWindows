@@ -301,16 +301,6 @@ void Connection::onChannelSuspiciousUserMessage(
     const lib::messages::Metadata &metadata,
     const lib::payload::channel_suspicious_user_message::v1::Payload &payload)
 {
-    // monitored chats are received over irc; in the future, we will use eventsub instead
-    if (payload.event.lowTrustStatus !=
-        lib::suspicious_users::Status::Restricted)
-    {
-        qCInfo(LOG) << "Ignoring low trust status message from user"
-                    << payload.event.userLogin.qt() << "because status is"
-                    << static_cast<std::uint8_t>(payload.event.lowTrustStatus);
-        return;
-    }
-
     auto *channel = dynamic_cast<TwitchChannel *>(
         getApp()
             ->getTwitch()
@@ -325,13 +315,43 @@ void Connection::onChannelSuspiciousUserMessage(
     }
 
     auto time = chronoToQDateTime(metadata.messageTimestamp);
-    auto header = makeSuspiciousUserMessageHeader(channel, time, payload.event);
-    auto body = makeSuspiciousUserMessageBody(channel, time, payload.event);
 
-    runInGuiThread([channel, header, body] {
-        channel->addMessage(header, MessageContext::Original);
-        channel->addMessage(body, MessageContext::Original);
-    });
+    // Handle both restricted and monitored messages
+    if (payload.event.lowTrustStatus == lib::suspicious_users::Status::Restricted)
+    {
+        // Restricted messages: show header + body (original behavior)
+        auto header = makeSuspiciousUserMessageHeader(channel, time, payload.event);
+        auto body = makeSuspiciousUserMessageBody(channel, time, payload.event);
+
+        runInGuiThread([channel, header, body] {
+            channel->addMessage(header, MessageContext::Original);
+            channel->addMessage(body, MessageContext::Original);
+        });
+    }
+    else
+    {
+        // Monitored messages: deduplicate with IRC message using message ID
+        auto body = makeSuspiciousUserMessageBody(channel, time, payload.event);
+
+        runInGuiThread([channel, body, payload] {
+            // Try to find and replace the IRC message using message ID
+            auto ircMsg = channel->findMessageByID(payload.event.message.messageId.qt());
+            if (ircMsg)
+            {
+                // Replace the IRC message with the styled EventSub version
+                qCDebug(LOG) << "Replacing IRC monitored message with EventSub version:"
+                            << payload.event.message.messageId.qt();
+                channel->replaceMessage(ircMsg, body);
+            }
+            else
+            {
+                // If no IRC message found (edge case), just add it
+                qCDebug(LOG) << "No IRC message found for monitored user, adding EventSub version:"
+                            << payload.event.message.messageId.qt();
+                channel->addMessage(body, MessageContext::Original);
+            }
+        });
+    }
 }
 
 void Connection::onChannelSuspiciousUserUpdate(
