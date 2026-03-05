@@ -333,7 +333,26 @@ void Connection::onChannelSuspiciousUserMessage(
         // Monitored messages: deduplicate with IRC message using message ID
         auto body = makeSuspiciousUserMessageBody(channel, time, payload.event);
 
-        runInGuiThread([channel, body, payload] {
+        auto messageText = payload.event.message.text.qt();
+        auto userLogin = payload.event.userLogin.qt();
+
+        runInGuiThread([channel, body, messageText, userLogin, payload] {
+            // Check if highlights should be triggered for monitored messages
+            // This allows users to get notified about monitored user messages
+            auto [highlighted, highlightResult] = getApp()->getHighlights()->check(
+                {}, {}, userLogin, messageText, body->flags);
+            if (highlighted)
+            {
+                MessageBuilder::triggerHighlights(
+                    channel,
+                    {
+                        .customSound =
+                            highlightResult.customSoundUrl.value_or<QUrl>({}),
+                        .playSound = highlightResult.playSound,
+                        .windowAlert = highlightResult.alert,
+                    });
+            }
+
             // Try to find and replace the IRC message using message ID
             auto ircMsg = channel->findMessageByID(payload.event.message.messageId.qt());
             if (ircMsg)
