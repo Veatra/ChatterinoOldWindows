@@ -761,6 +761,11 @@ MessagePtr makeSuspiciousUserMessageBody(
     EventSubMessageBuilder builder(channel);
     builder->channelName = event.broadcasterUserLogin.qt();
     builder->serverReceivedTime = time;
+    
+    // Set message ID for deduplication
+    builder->id = event.message.messageId.qt();
+    
+    // Set flags for both restricted and monitored messages
     if (event.lowTrustStatus == lib::suspicious_users::Status::Restricted)
     {
         builder->flags.set(MessageFlag::RestrictedMessage);
@@ -785,7 +790,7 @@ MessagePtr makeSuspiciousUserMessageBody(
         event.userName.qt() + ":", event.userLogin.qt(), MessageColor::Text,
         channel->getUserColor(event.userLogin.qt()));
 
-    // sender's message caught by AutoMod
+    // sender's message caught by low trust system
     // XXX: add the structured message here
     builder.emplace<TextElement>(event.message.text.qt(),
                                  MessageElementFlag::Text, MessageColor::Text);
