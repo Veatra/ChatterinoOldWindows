@@ -591,6 +591,30 @@ public:
     };
     QStringSetting automodHighlightColor = {"/highlighting/automod/color", ""};
 
+    /// Monitored Messages
+    BoolSetting enableMonitoredMessageHighlight = {
+        "/highlighting/monitoredMessage/enabled",
+        true,
+    };
+    BoolSetting showMonitoredMessageInMentions = {
+        "/highlighting/monitoredMessage/showInMentions",
+        false,
+    };
+    BoolSetting enableMonitoredMessageHighlightSound = {
+        "/highlighting/monitoredMessage/enableSound",
+        false,
+    };
+    BoolSetting enableMonitoredMessageHighlightTaskbar = {
+        "/highlighting/monitoredMessage/enableTaskbarFlashing",
+        false,
+    };
+    QStringSetting monitoredMessageHighlightSoundUrl = {
+        "/highlighting/monitoredMessage/soundUrl",
+        "",
+    };
+    QStringSetting monitoredMessageHighlightColor = {
+        "/highlighting/monitoredMessage/color", ""};
+
     BoolSetting enableThreadHighlight = {
         "/highlighting/thread/nameIsHighlightKeyword", true};
     BoolSetting showThreadHighlightInMentions = {
