@@ -315,6 +315,7 @@ void Connection::onChannelSuspiciousUserMessage(
     }
 
     auto time = chronoToQDateTime(metadata.messageTimestamp);
+    const QString messageId = payload.event.message.messageId.qt();
 
     // Handle both restricted and monitored messages
     if (payload.event.lowTrustStatus == lib::suspicious_users::Status::Restricted)
@@ -333,40 +334,21 @@ void Connection::onChannelSuspiciousUserMessage(
         // Monitored messages: deduplicate with IRC message using message ID
         auto body = makeSuspiciousUserMessageBody(channel, time, payload.event);
 
-        auto messageText = payload.event.message.text.qt();
-        auto userLogin = payload.event.userLogin.qt();
-
-        runInGuiThread([channel, body, messageText, userLogin, payload] {
-            // Check if highlights should be triggered for monitored messages
-            // This allows users to get notified about monitored user messages
-            auto [highlighted, highlightResult] = getApp()->getHighlights()->check(
-                {}, {}, userLogin, messageText, body->flags);
-            if (highlighted)
-            {
-                MessageBuilder::triggerHighlights(
-                    channel,
-                    {
-                        .customSound =
-                            highlightResult.customSoundUrl.value_or<QUrl>({}),
-                        .playSound = highlightResult.playSound,
-                        .windowAlert = highlightResult.alert,
-                    });
-            }
-
+        runInGuiThread([channel, body, messageId] {
             // Try to find and replace the IRC message using message ID
-            auto ircMsg = channel->findMessageByID(payload.event.message.messageId.qt());
+            auto ircMsg = channel->findMessageByID(messageId);
             if (ircMsg)
             {
                 // Replace the IRC message with the styled EventSub version
                 qCDebug(LOG) << "Replacing IRC monitored message with EventSub version:"
-                            << payload.event.message.messageId.qt();
+                            << messageId;
                 channel->replaceMessage(ircMsg, body);
             }
             else
             {
                 // If no IRC message found (edge case), just add it
                 qCDebug(LOG) << "No IRC message found for monitored user, adding EventSub version:"
-                            << payload.event.message.messageId.qt();
+                            << messageId;
                 channel->addMessage(body, MessageContext::Original);
             }
         });
