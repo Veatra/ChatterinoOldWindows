@@ -180,6 +180,16 @@ void MessageLayout::actuallyLayout(const MessageLayoutContext &ctx)
             }
         }
 
+        if (this->message_->flags.has(MessageFlag::MonitoredMessage))
+        {
+            if (getApp()->getStreamerMode()->shouldHideRestrictedUsers())
+            {
+                // Message is being hidden because the source is a
+                // monitored user (same setting as restricted for consistency)
+                continue;
+            }
+        }
+
         if (this->message_->flags.has(MessageFlag::ModerationAction))
         {
             if (hideModerationActions ||
