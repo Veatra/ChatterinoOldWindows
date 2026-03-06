@@ -459,17 +459,16 @@ void MessageLayout::updateBuffer(QPixmap *buffer,
         }
         else if (this->message_->flags.has(MessageFlag::MonitoredMessage))
         {
-            // Fetch directly from getSettings() instead of ctx.preferences
             if (getSettings()->enableMonitoredMessageHighlight.getValue()) {
                 QColor customColor(getSettings()->monitoredMessageHighlightColor.getValue());
                 if (customColor.isValid()) {
                     backgroundColor = blendColors(backgroundColor, customColor);
                 } else {
-                    // Fallback highlight color for monitored messages (translucent orange) if color isn't configured yet
+                    // Fallback translucent orange
                     backgroundColor = blendColors(backgroundColor, QColor(255, 128, 0, 64)); 
                 }
             } else {
-                backgroundColor = QColor("#404040"); // Default dark gray if highlighting is toggled off
+                backgroundColor = QColor("#404040"); // Default dark gray if disabled
             }
         }
         else
