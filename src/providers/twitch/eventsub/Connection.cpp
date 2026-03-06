@@ -26,10 +26,12 @@
 
 #include <boost/json.hpp>
 #include <QDateTime>
+#include <algorithm>
 #include <twitch-eventsub-ws/listener.hpp>
 #include <twitch-eventsub-ws/session.hpp>
 
 #include <chrono>
+
 
 namespace {
 
@@ -305,9 +307,6 @@ void Connection::onChannelSuspiciousUserMessage(
             .get());
     if (!channel || channel->isEmpty())
     {
-        qCDebug(LOG)
-            << "Suspicious message for broadcaster we're not interested in"
-            << payload.event.broadcasterUserLogin.qt();
         return;
     }
 
@@ -326,14 +325,44 @@ void Connection::onChannelSuspiciousUserMessage(
     }
     else
     {
+        // 1. Determine the correct 3-letter tag based on the suspicious type
+        QString tagStr = " [MON]"; // Default: Manually Monitored
+        auto hasType = [&](lib::suspicious_users::Type type) {
+            return std::ranges::find(payload.event.types, type) != payload.event.types.end();
+        };
+        if (hasType(lib::suspicious_users::Type::BanEvaderDetector)) {
+            tagStr = " [EVD]"; // Ban Evader
+        } else if (hasType(lib::suspicious_users::Type::SharedChannelBan)) {
+            tagStr = " [SHR]"; // Shared Ban
+        }
+
         auto body = makeSuspiciousUserMessageBody(channel, time, payload.event);
 
-        runInGuiThread([channel, body, msgId] {
+        runInGuiThread([channel, body, msgId, tagStr] {
             auto ircMsg = channel->findMessageByID(msgId);
             if (ircMsg)
             {
                 qCDebug(LOG) << "Flagging IRC message as monitored:" << msgId;
-                ircMsg->flags.set(MessageFlag::MonitoredMessage);
+                
+                // Safely cast to mutate the existing rich IRC message (preserves emotes & badges)
+                auto *mutMsg = const_cast<Message *>(ircMsg.get());
+                mutMsg->flags.set(MessageFlag::MonitoredMessage);
+
+                // Find the Username element so we can inject the tag right after it
+                auto it = std::find_if(mutMsg->elements.begin(), mutMsg->elements.end(), [](const auto &el) {
+                    return el->getFlags().has(MessageElementFlag::Username);
+                });
+
+                // Create the visual tag (Grey colored, bold text)
+                auto tagElement = std::make_unique<TextElement>(tagStr, MessageElementFlag::Text, MessageColor::System, FontStyle::ChatMediumBold);
+
+                if (it != mutMsg->elements.end()) {
+                    mutMsg->elements.insert(it + 1, std::move(tagElement));
+                } else {
+                    mutMsg->elements.push_back(std::move(tagElement));
+                }
+
+                // Force the UI to rebuild the layout for this specific message
                 channel->replaceMessage(ircMsg, ircMsg); 
             }
             else
