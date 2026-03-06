@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2024 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 #include "twitch-eventsub-ws/string.hpp"
@@ -21,9 +25,6 @@ struct Emote {
 
     String id;
     String emoteSetID;
-    // XXX: this isn't included in automod-ish messages and we don't have a
-    // need for it right now
-    // String ownerID;
 };
 
 struct Mention {
@@ -45,10 +46,12 @@ struct MessageFragment {
 };
 
 struct Message {
+    String messageId; // <--- ADD THIS LINE
     String text;
     std::vector<MessageFragment> fragments;
 };
 
-#include "twitch-eventsub-ws/payloads/structured-message.inc"
+} // namespace chatterino::eventsub::lib::chat
 
-}  // namespace chatterino::eventsub::lib::chat
+// This include is critical for the code generator!
+#include "twitch-eventsub-ws/payloads/structured-message.inc"
