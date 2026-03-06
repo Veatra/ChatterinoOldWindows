@@ -405,14 +405,15 @@ void IrcMessageHandler::parsePrivMessageInto(
         }
     }
 
-    // Prevent duplicate messages if the EventSub "monitored-user" payload beat IRC
+    // --- DEDUPLICATION LOGIC ---
+    // Prevent duplicate messages if the EventSub payload arrived first
     QString msgId = message->tag("id").toString();
     if (!msgId.isEmpty() && channel->findMessageByID(msgId))
     {
         qCDebug(chatterinoTwitch) << "Skipping IRC message, already handled by EventSub:" << msgId;
         return;
     }
-
+    // ---------------------------
 
     IrcMessageHandler::addMessage(
         message, sink, channel, unescapeZeroWidthJoiner(message->content()),
