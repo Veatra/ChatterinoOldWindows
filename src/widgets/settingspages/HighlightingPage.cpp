@@ -23,11 +23,14 @@
 
 #include <QFileDialog>
 #include <QGroupBox>
+#include <QHBoxLayout>
 #include <QHeaderView>
+#include <QLabel>
 #include <QPushButton>
 #include <QStandardItemModel>
 #include <QTableView>
 #include <QTabWidget>
+#include <QVBoxLayout>
 
 namespace chatterino {
 
@@ -267,11 +270,29 @@ HighlightingPage::HighlightingPage()
         monitoredLayout->addWidget(
             this->createCheckBox("Highlight Monitored User messages",
                                  getSettings()->enableMonitoredMessageHighlight));
-        monitoredLayout->addWidget(
-            this->createColorButton("Custom Color",
-                                    getSettings()->monitoredMessageHighlightColor,
-                                    getSettings()->enableMonitoredMessageHighlight));
-                                    
+        
+        auto *colorLayout = new QHBoxLayout();
+        auto *colorLabel = new QLabel("Custom Color:");
+        auto *colorButton = new QPushButton("Choose Color...");
+        colorLayout->addWidget(colorLabel);
+        colorLayout->addWidget(colorButton);
+        colorLayout->addStretch(1);
+        
+        QObject::connect(colorButton, &QPushButton::clicked, this, [this]() {
+            QColor initial(getSettings()->monitoredMessageHighlightColor.getValue());
+            if (!initial.isValid()) {
+                initial = QColor(255, 128, 0, 64);
+            }
+            auto *dialog = new ColorPickerDialog(initial, this);
+            QObject::connect(dialog, &ColorPickerDialog::colorConfirmed, this, [this](const QColor &selected) {
+                if (selected.isValid()) {
+                    getSettings()->monitoredMessageHighlightColor = selected.name(QColor::HexArgb);
+                }
+            });
+            dialog->show();
+        });
+
+        monitoredLayout->addLayout(colorLayout);
         layout.append(monitoredGroup);
 
         // MISC
