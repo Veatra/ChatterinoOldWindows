@@ -93,7 +93,6 @@ QString stringifyAutomodReason(const lib::automod::BlockedTermReason &reason,
     return msg;
 }
 
-// XXX: this is a duplicate from messages/MessageBuilder.cpp
 EmotePtr makeAutoModBadge()
 {
     return std::make_shared<Emote>(Emote{
@@ -763,7 +762,7 @@ MessagePtr makeSuspiciousUserMessageBody(
     builder->serverReceivedTime = time;
     
     // Set the Message ID for deduplication
-    builder->id = event.message.messageId.qt();
+    builder->id = event.message.messageID.qt();
     
     // Set flags for both restricted and monitored messages
     if (event.lowTrustStatus == lib::suspicious_users::Status::Restricted)
