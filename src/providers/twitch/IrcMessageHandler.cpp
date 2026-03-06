@@ -406,7 +406,6 @@ void IrcMessageHandler::parsePrivMessageInto(
     }
 
     // --- DEDUPLICATION LOGIC ---
-    // Prevent duplicate messages if the EventSub payload arrived first
     QString msgId = message->tag("id").toString();
     if (!msgId.isEmpty() && channel->findMessageByID(msgId))
     {
