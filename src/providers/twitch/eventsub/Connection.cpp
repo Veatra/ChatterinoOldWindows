@@ -26,10 +26,12 @@
 
 #include <boost/json.hpp>
 #include <QDateTime>
+#include <algorithm>
 #include <twitch-eventsub-ws/listener.hpp>
 #include <twitch-eventsub-ws/session.hpp>
 
 #include <chrono>
+
 
 namespace {
 
@@ -194,7 +196,6 @@ void Connection::onChannelModerate(
 
             if constexpr (CanMakeModMessage<Action>)
             {
-                // FIXME: This message should still be added, but instead hidden during layout if the setting is enabled.
                 if (getSettings()->hideDeletionActions)
                 {
                     return;
@@ -289,8 +290,6 @@ void Connection::onAutomodMessageUpdate(
         return;
     }
 
-    // Gray out approve/deny button upon "ALLOWED" and "DENIED" statuses
-    // They are versions of automod_message_(denied|approved) but for mods.
     auto id = "automod_" + payload.event.messageID.qt();
     runInGuiThread([channel, id] {
         channel->disableMessage(id);
@@ -308,19 +307,14 @@ void Connection::onChannelSuspiciousUserMessage(
             .get());
     if (!channel || channel->isEmpty())
     {
-        qCDebug(LOG)
-            << "Suspicious message for broadcaster we're not interested in"
-            << payload.event.broadcasterUserLogin.qt();
         return;
     }
 
     auto time = chronoToQDateTime(metadata.messageTimestamp);
-    const QString messageId = payload.event.message.messageId.qt();
+    const QString msgId = payload.event.message.messageID.qt();
 
-    // Handle both restricted and monitored messages
     if (payload.event.lowTrustStatus == lib::suspicious_users::Status::Restricted)
     {
-        // Restricted messages: show header + body (original behavior)
         auto header = makeSuspiciousUserMessageHeader(channel, time, payload.event);
         auto body = makeSuspiciousUserMessageBody(channel, time, payload.event);
 
@@ -331,24 +325,49 @@ void Connection::onChannelSuspiciousUserMessage(
     }
     else
     {
-        // Monitored messages: deduplicate with IRC message using message ID
+        // 1. Determine the correct 3-letter tag based on the suspicious type
+        QString tagStr = " [MON]"; // Default: Manually Monitored
+        auto hasType = [&](lib::suspicious_users::Type type) {
+            return std::ranges::find(payload.event.types, type) != payload.event.types.end();
+        };
+        if (hasType(lib::suspicious_users::Type::BanEvaderDetector)) {
+            tagStr = " [EVD]"; // Ban Evader
+        } else if (hasType(lib::suspicious_users::Type::SharedChannelBan)) {
+            tagStr = " [SHR]"; // Shared Ban
+        }
+
         auto body = makeSuspiciousUserMessageBody(channel, time, payload.event);
 
-        runInGuiThread([channel, body, messageId] {
-            // Try to find and replace the IRC message using message ID
-            auto ircMsg = channel->findMessageByID(messageId);
+        runInGuiThread([channel, body, msgId, tagStr] {
+            auto ircMsg = channel->findMessageByID(msgId);
             if (ircMsg)
             {
-                // Replace the IRC message with the styled EventSub version
-                qCDebug(LOG) << "Replacing IRC monitored message with EventSub version:"
-                            << messageId;
-                channel->replaceMessage(ircMsg, body);
+                qCDebug(LOG) << "Flagging IRC message as monitored:" << msgId;
+                
+                // Safely cast to mutate the existing rich IRC message (preserves emotes & badges)
+                auto *mutMsg = const_cast<Message *>(ircMsg.get());
+                mutMsg->flags.set(MessageFlag::MonitoredMessage);
+
+                // Find the Username element so we can inject the tag right after it
+                auto it = std::find_if(mutMsg->elements.begin(), mutMsg->elements.end(), [](const auto &el) {
+                    return el->getFlags().has(MessageElementFlag::Username);
+                });
+
+                // Create the visual tag (Grey colored, bold text)
+                auto tagElement = std::make_unique<TextElement>(tagStr, MessageElementFlag::Text, MessageColor::System, FontStyle::ChatMediumBold);
+
+                if (it != mutMsg->elements.end()) {
+                    mutMsg->elements.insert(it + 1, std::move(tagElement));
+                } else {
+                    mutMsg->elements.push_back(std::move(tagElement));
+                }
+
+                // Force the UI to rebuild the layout for this specific message
+                channel->replaceMessage(ircMsg, ircMsg); 
             }
             else
             {
-                // If no IRC message found (edge case), just add it
-                qCDebug(LOG) << "No IRC message found for monitored user, adding EventSub version:"
-                            << messageId;
+                qCDebug(LOG) << "No IRC message found for monitored user, adding EventSub version:" << msgId;
                 channel->addMessage(body, MessageContext::Original);
             }
         });
@@ -459,8 +478,6 @@ void Connection::markRequestUnsubscribed(const SubscriptionRequest &request)
 
     if (this->subscriptions.empty())
     {
-        // TODO: Verify that it's fine for us to reuse a connection for another
-        // user after all old subscriptions are gone
         this->twitchUserID.clear();
     }
 }
