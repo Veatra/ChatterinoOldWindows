@@ -477,11 +477,6 @@ void MessageLayout::updateBuffer(QPixmap *buffer,
             backgroundColor = QColor("#404040"); // Restricted messages / fallback
         }
     }
-        else
-        {
-            backgroundColor = QColor("#404040"); // Restricted messages / fallback
-        }
-    }
     else if (this->message_->flags.has(MessageFlag::Debug))
     {
         backgroundColor = QColor("#4A273D");
