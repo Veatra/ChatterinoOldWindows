@@ -317,7 +317,6 @@ void Connection::onChannelSuspiciousUserMessage(
     auto time = chronoToQDateTime(metadata.messageTimestamp);
     const QString messageId = payload.event.message.messageId.qt();
 
-    // Handle both restricted and monitored messages
     if (payload.event.lowTrustStatus == lib::suspicious_users::Status::Restricted)
     {
         // Restricted messages: show header + body (original behavior)
@@ -335,20 +334,19 @@ void Connection::onChannelSuspiciousUserMessage(
         auto body = makeSuspiciousUserMessageBody(channel, time, payload.event);
 
         runInGuiThread([channel, body, messageId] {
-            // Try to find and replace the IRC message using message ID
             auto ircMsg = channel->findMessageByID(messageId);
             if (ircMsg)
             {
-                // Replace the IRC message with the styled EventSub version
-                qCDebug(LOG) << "Replacing IRC monitored message with EventSub version:"
-                            << messageId;
-                channel->replaceMessage(ircMsg, body);
+                // We found the rich IRC message (with emotes intact). 
+                // Add the Monitored flag, and tell the UI to redraw it.
+                qCDebug(LOG) << "Flagging IRC message as monitored:" << messageId;
+                ircMsg->flags.set(MessageFlag::MonitoredMessage);
+                channel->replaceMessage(ircMsg, ircMsg); 
             }
             else
             {
-                // If no IRC message found (edge case), just add it
-                qCDebug(LOG) << "No IRC message found for monitored user, adding EventSub version:"
-                            << messageId;
+                // Edge case: If EventSub beat IRC, add the EventSub version to chat
+                qCDebug(LOG) << "No IRC message found for monitored user, adding EventSub version:" << messageId;
                 channel->addMessage(body, MessageContext::Original);
             }
         });
