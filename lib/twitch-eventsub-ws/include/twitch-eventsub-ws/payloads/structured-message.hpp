@@ -46,12 +46,12 @@ struct MessageFragment {
 };
 
 struct Message {
-    String messageId; // <--- ADD THIS LINE
+    String messageID;
     String text;
     std::vector<MessageFragment> fragments;
 };
 
-} // namespace chatterino::eventsub::lib::chat
-
-// This include is critical for the code generator!
+// This include MUST be inside the namespace for the code generator!
 #include "twitch-eventsub-ws/payloads/structured-message.inc"
+
+} // namespace chatterino::eventsub::lib::chat
