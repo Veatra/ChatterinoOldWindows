@@ -93,7 +93,6 @@ QString stringifyAutomodReason(const lib::automod::BlockedTermReason &reason,
     return msg;
 }
 
-// XXX: this is a duplicate from messages/MessageBuilder.cpp
 EmotePtr makeAutoModBadge()
 {
     return std::make_shared<Emote>(Emote{
@@ -762,8 +761,8 @@ MessagePtr makeSuspiciousUserMessageBody(
     builder->channelName = event.broadcasterUserLogin.qt();
     builder->serverReceivedTime = time;
     
-    // Set message ID for deduplication
-    builder->id = event.message.messageId.qt();
+    // Set the Message ID for deduplication
+    builder->id = event.message.messageID.qt();
     
     // Set flags for both restricted and monitored messages
     if (event.lowTrustStatus == lib::suspicious_users::Status::Restricted)
@@ -791,7 +790,6 @@ MessagePtr makeSuspiciousUserMessageBody(
         channel->getUserColor(event.userLogin.qt()));
 
     // sender's message caught by low trust system
-    // XXX: add the structured message here
     builder.emplace<TextElement>(event.message.text.qt(),
                                  MessageElementFlag::Text, MessageColor::Text);
 
