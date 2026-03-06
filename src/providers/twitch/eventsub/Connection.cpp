@@ -194,7 +194,6 @@ void Connection::onChannelModerate(
 
             if constexpr (CanMakeModMessage<Action>)
             {
-                // FIXME: This message should still be added, but instead hidden during layout if the setting is enabled.
                 if (getSettings()->hideDeletionActions)
                 {
                     return;
@@ -289,8 +288,6 @@ void Connection::onAutomodMessageUpdate(
         return;
     }
 
-    // Gray out approve/deny button upon "ALLOWED" and "DENIED" statuses
-    // They are versions of automod_message_(denied|approved) but for mods.
     auto id = "automod_" + payload.event.messageID.qt();
     runInGuiThread([channel, id] {
         channel->disableMessage(id);
@@ -315,11 +312,10 @@ void Connection::onChannelSuspiciousUserMessage(
     }
 
     auto time = chronoToQDateTime(metadata.messageTimestamp);
-    const QString messageId = payload.event.message.messageId.qt();
+    const QString msgId = payload.event.message.messageID.qt();
 
     if (payload.event.lowTrustStatus == lib::suspicious_users::Status::Restricted)
     {
-        // Restricted messages: show header + body (original behavior)
         auto header = makeSuspiciousUserMessageHeader(channel, time, payload.event);
         auto body = makeSuspiciousUserMessageBody(channel, time, payload.event);
 
@@ -330,23 +326,19 @@ void Connection::onChannelSuspiciousUserMessage(
     }
     else
     {
-        // Monitored messages: deduplicate with IRC message using message ID
         auto body = makeSuspiciousUserMessageBody(channel, time, payload.event);
 
-        runInGuiThread([channel, body, messageId] {
-            auto ircMsg = channel->findMessageByID(messageId);
+        runInGuiThread([channel, body, msgId] {
+            auto ircMsg = channel->findMessageByID(msgId);
             if (ircMsg)
             {
-                // We found the rich IRC message (with emotes intact). 
-                // Add the Monitored flag, and tell the UI to redraw it.
-                qCDebug(LOG) << "Flagging IRC message as monitored:" << messageId;
+                qCDebug(LOG) << "Flagging IRC message as monitored:" << msgId;
                 ircMsg->flags.set(MessageFlag::MonitoredMessage);
                 channel->replaceMessage(ircMsg, ircMsg); 
             }
             else
             {
-                // Edge case: If EventSub beat IRC, add the EventSub version to chat
-                qCDebug(LOG) << "No IRC message found for monitored user, adding EventSub version:" << messageId;
+                qCDebug(LOG) << "No IRC message found for monitored user, adding EventSub version:" << msgId;
                 channel->addMessage(body, MessageContext::Original);
             }
         });
@@ -457,8 +449,6 @@ void Connection::markRequestUnsubscribed(const SubscriptionRequest &request)
 
     if (this->subscriptions.empty())
     {
-        // TODO: Verify that it's fine for us to reuse a connection for another
-        // user after all old subscriptions are gone
         this->twitchUserID.clear();
     }
 }
