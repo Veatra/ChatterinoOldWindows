@@ -75,8 +75,6 @@ int MessageLayout::getWidth() const
 bool MessageLayout::layout(const MessageLayoutContext &ctx,
                            bool shouldInvalidateBuffer)
 {
-    //    BenchmarkGuard benchmark("MessageLayout::layout()");
-
     bool layoutRequired = false;
 
     // check if width changed
@@ -95,7 +93,7 @@ bool MessageLayout::layout(const MessageLayoutContext &ctx,
 
     // check if work mask changed
     layoutRequired |= this->currentWordFlags_ != ctx.flags;
-    this->currentWordFlags_ = ctx.flags;  // getSettings()->getWordTypeMask();
+    this->currentWordFlags_ = ctx.flags;
 
     // check if layout was requested manually
     layoutRequired |= this->flags.has(MessageLayoutFlag::RequiresLayout);
@@ -164,9 +162,6 @@ void MessageLayout::actuallyLayout(const MessageLayoutContext &ctx)
         if (hideBlockedTermAutomodMessages &&
             this->message_->flags.has(MessageFlag::AutoModBlockedTerm))
         {
-            // NOTE: This hides the message but it will make the message re-appear if moderation message hiding is no longer active, and the layout is re-laid-out.
-            // This is only the case for the moderation messages that don't get filtered during creation.
-            // We should decide which is the correct method & apply that everywhere
             continue;
         }
 
@@ -174,8 +169,6 @@ void MessageLayout::actuallyLayout(const MessageLayoutContext &ctx)
         {
             if (getApp()->getStreamerMode()->shouldHideRestrictedUsers())
             {
-                // Message is being hidden because the source is a
-                // restricted user
                 continue;
             }
         }
@@ -184,8 +177,6 @@ void MessageLayout::actuallyLayout(const MessageLayoutContext &ctx)
         {
             if (getApp()->getStreamerMode()->shouldHideRestrictedUsers())
             {
-                // Message is being hidden because the source is a
-                // monitored user (same setting as restricted for consistency)
                 continue;
             }
         }
@@ -195,9 +186,6 @@ void MessageLayout::actuallyLayout(const MessageLayoutContext &ctx)
             if (hideModerationActions ||
                 getApp()->getStreamerMode()->shouldHideModActions())
             {
-                // Message is being hidden because we consider the message
-                // a moderation action (something a streamer is unlikely to
-                // want to share if they briefly show their chat on stream)
                 continue;
             }
         }
@@ -402,7 +390,6 @@ void MessageLayout::updateBuffer(QPixmap *buffer,
             backgroundColor,
             *ctx.colorProvider.color(ColorType::ElevatedMessageHighlight));
     }
-
     else if (this->message_->flags.has(MessageFlag::FirstMessage) &&
              ctx.preferences.enableFirstMessageHighlight)
     {
@@ -423,7 +410,6 @@ void MessageLayout::updateBuffer(QPixmap *buffer,
         assert(this->message_->highlightColor);
         if (this->message_->highlightColor)
         {
-            // Blend highlight color with usual background color
             backgroundColor =
                 blendColors(backgroundColor, *this->message_->highlightColor);
         }
@@ -431,7 +417,6 @@ void MessageLayout::updateBuffer(QPixmap *buffer,
     else if (this->message_->flags.has(MessageFlag::Subscription) &&
              ctx.preferences.enableSubHighlight)
     {
-        // Blend highlight color with usual background color
         backgroundColor = blendColors(
             backgroundColor, *ctx.colorProvider.color(ColorType::Subscription));
     }
@@ -440,13 +425,13 @@ void MessageLayout::updateBuffer(QPixmap *buffer,
                   MessageFlag::RedeemedChannelPointReward)) &&
              ctx.preferences.enableRedeemedHighlight)
     {
-        // Blend highlight color with usual background color
         backgroundColor =
             blendColors(backgroundColor,
                         *ctx.colorProvider.color(ColorType::RedeemedHighlight));
     }
     else if (this->message_->flags.has(MessageFlag::AutoMod) ||
-             this->message_->flags.has(MessageFlag::LowTrustUsers))
+             this->message_->flags.has(MessageFlag::LowTrustUsers) ||
+             this->message_->flags.has(MessageFlag::MonitoredMessage))
     {
         if (ctx.preferences.enableAutomodHighlight &&
             (this->message_->flags.has(MessageFlag::AutoModOffendingMessage) ||
@@ -464,16 +449,15 @@ void MessageLayout::updateBuffer(QPixmap *buffer,
                 if (customColor.isValid()) {
                     backgroundColor = blendColors(backgroundColor, customColor);
                 } else {
-                    // Fallback translucent orange
                     backgroundColor = blendColors(backgroundColor, QColor(255, 128, 0, 64)); 
                 }
             } else {
-                backgroundColor = QColor("#404040"); // Default dark gray if disabled
+                backgroundColor = QColor("#404040");
             }
         }
         else
         {
-            backgroundColor = QColor("#404040"); // Restricted messages / fallback
+            backgroundColor = QColor("#404040");
         }
     }
     else if (this->message_->flags.has(MessageFlag::Debug))
@@ -487,7 +471,6 @@ void MessageLayout::updateBuffer(QPixmap *buffer,
     this->container_.paintElements(painter, ctx);
 
 #ifdef FOURTF
-    // debug
     painter.setPen(QColor(255, 0, 0));
     painter.drawRect(buffer->rect().x(), buffer->rect().y(),
                      buffer->rect().width() - 1, buffer->rect().height() - 1);
@@ -512,7 +495,6 @@ void MessageLayout::deleteBuffer()
     if (this->buffer_ != nullptr)
     {
         DebugCount::decrease("message drawing buffers");
-
         this->buffer_ = nullptr;
     }
 }
@@ -520,29 +502,19 @@ void MessageLayout::deleteBuffer()
 void MessageLayout::deleteCache()
 {
     this->deleteBuffer();
-
 #ifdef XD
     this->container_.clear();
 #endif
 }
 
-// Elements
-//    assert(QThread::currentThread() == QApplication::instance()->thread());
-
-// returns nullptr if none was found
-
-// fourtf: this should return a MessageLayoutItem
 const MessageLayoutElement *MessageLayout::getElementAt(QPointF point) const
 {
-    // go through all words and return the first one that contains the point.
     return this->container_.getElementAt(point);
 }
 
 std::pair<int, int> MessageLayout::getWordBounds(
     const MessageLayoutElement *hoveredElement, QPointF relativePos) const
 {
-    // An element with wordId != -1 can be multiline, so we need to check all
-    // elements in the container
     if (hoveredElement->getWordId() != -1)
     {
         return this->container_.getWordBounds(hoveredElement);
